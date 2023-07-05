@@ -1,0 +1,234 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+  <mapper namespace="com.twistedfae.mapper.gameMapper">
+	<!-- 게임 등록-->
+	<insert id="enroll">        
+	    insert into game_details (title, category, franchise, release_date, developer, publisher,
+	     original_price, discount_rate, video,
+	      thumbnail1, thumbnail2, thumbnail3, thumbnail4, thumbnail5, introduction, description)
+	    values (#{title}, #{category}, #{franchise}, #{release_date}, #{developer}, #{publisher},
+	     #{original_price}, #{discount_rate}, #{video}, #{thumbnail1}, #{thumbnail2}, #{thumbnail3},
+	     #{thumbnail4}, #{thumbnail5}, #{introduction}, #{description})        
+	</insert>
+	<!-- 댓글 등록-->
+	<insert id="commentInsert">        
+		insert into comments (game_id, user_id, posted_date, content, likes) values (#{game_id}, #{user_id}, #{posted_date}, #{content},#{likes});       
+	</insert>
+	<!-- 찜 목록 추가-->
+	<insert id="wishInsert">        
+		insert into wish_lists (user_id, game_id, date_added) values (#{user_id},#{game_id},#{date_added});       
+	</insert>
+	<!-- 장바구니 추가-->
+	<insert id="cartInsert">        
+		insert into shopping_cart (user_id, game_id) values (#{user_id},#{game_id});       
+	</insert>
+	<!-- 장바구니 추가-->
+	<insert id="libraryInsert">        
+		insert into library (user_id, game_id) values (#{user_id},#{game_id});       
+	</insert>
+	<!-- 유용한 댓글 조회-->
+	<select id="bestcmt" resultType="com.twistedfae.model.commentVO">		
+		SELECT c.comment_id, c.game_id, c.user_id,u.name, u.profile_image,c.posted_date,c.content,c.likes, 
+	   IFNULL(cr.total_likes, 0) AS total_likes,IFNULL(cr.likes_1, 0) AS likes_1,IFNULL(cr.likes_0, 0) AS likes_0
+	FROM comments c JOIN users u ON c.user_id = u.user_id
+	LEFT JOIN
+	   (SELECT comment_id,COUNT(*) AS total_likes, SUM(CASE WHEN likes = 1 THEN 1 ELSE 0 END) AS likes_1,
+	           SUM(CASE WHEN likes = 0 THEN 1 ELSE 0 END) AS likes_0
+	       FROM comment_ratings
+	       GROUP BY comment_id) cr ON c.comment_id = cr.comment_id
+	WHERE c.game_id = #{game_id}<!-- #{game_id} -->
+	ORDER BY cr.likes_1 DESC; 		
+	</select>
+	<!-- 최근 댓글 조회-->
+	<select id="recentcmt" resultType="com.twistedfae.model.commentVO">		
+		SELECT c.comment_id, c.game_id, c.user_id,u.name, u.profile_image,c.posted_date,c.content,c.likes, 
+	    IFNULL(cr.total_likes, 0) AS total_likes,IFNULL(cr.likes_1, 0) AS likes_1,IFNULL(cr.likes_0, 0) AS likes_0
+		FROM comments c JOIN users u ON c.user_id = u.user_id
+		LEFT JOIN
+	   (SELECT comment_id,COUNT(*) AS total_likes, SUM(CASE WHEN likes = 1 THEN 1 ELSE 0 END) AS likes_1,
+	           SUM(CASE WHEN likes = 0 THEN 1 ELSE 0 END) AS likes_0
+	       FROM comment_ratings
+	       GROUP BY comment_id) cr ON c.comment_id = cr.comment_id
+		WHERE c.game_id = #{game_id}
+		ORDER BY c.posted_date DESC; 		
+	</select>
+	<!-- 내 댓글 조회-->
+	<select id="mycmt" resultType="com.twistedfae.model.commentVO">
+	    SELECT * FROM comments WHERE user_id = #{user_id} AND game_id = #{game_id}
+	</select>	
+	<!-- 게임 페이지 조회--> 	
+	<select id="gamePage" resultType="com.twistedfae.model.gameVO">
+		SELECT g.*, IFNULL(c.total_likes, 0) AS total_likes, IFNULL(c.likes_1, 0) AS likes_1, IFNULL(c.likes_0, 0) AS likes_0
+		FROM game_details g
+		LEFT OUTER JOIN (
+	    SELECT game_id, COUNT(*) AS total_likes,SUM(CASE WHEN likes = 1 THEN 1 ELSE 0 END) AS likes_1,SUM(CASE WHEN likes = 0 THEN 1 ELSE 0 END) AS likes_0
+	    FROM comments
+	    GROUP BY game_id) c ON g.game_id = c.game_id
+		WHERE g.game_id = #{game_id};
+	</select>
+	<!-- 게임 요구 사항 조회-->
+	<select id="sysreq" resultType="com.twistedfae.model.System_requirementVO">
+		SELECT s.*
+		FROM game_details g
+		JOIN system_requirements s ON g.game_id = s.game_id
+		WHERE g.game_id = #{game_id};
+	</select>
+	<!-- 내 라이브러리 조회 -->
+	<select id="librarySelect" resultType="com.twistedfae.model.LibraryVO">
+		select * from library where game_id = #{game_id} and user_id = #{user_id};
+	</select>
+	<!-- 인기 게임 조회 -->
+	<select id="bestgame" resultType="com.twistedfae.model.gameVO">
+		select g.game_id, g.title, g.category, g.original_price, g.discount_rate, g.discounted_price, g.thumbnail1 , 
+		g.thumbnail2 ,g.thumbnail3 ,g.thumbnail4 ,g.thumbnail5 ,ifnull(g.buycount, 0) as buycount, IFNULL(c.total_likes, 0) AS total_likes,
+    	IFNULL(c.likes_1, 0) AS likes_1, IFNULL(c.likes_0, 0) AS likes_0
+		FROM game_details g
+		LEFT outer JOIN(
+        SELECT game_id, COUNT(*) AS total_likes,
+            SUM(CASE WHEN likes = 1 THEN 1 ELSE 0 END) AS likes_1,
+            SUM(CASE WHEN likes = 0 THEN 1 ELSE 0 END) AS likes_0
+        FROM comments
+        GROUP BY game_id
+    	) c ON g.game_id = c.game_id
+   		order by g.buycount desc;
+	</select>
+	<!-- 랜덤 인기 게임 조회 -->
+	<select id="recommendGame" resultType="com.twistedfae.model.gameVO">
+		SELECT *
+		FROM game_details
+		WHERE buycount > (
+		  SELECT AVG(buycount)
+		  FROM game_details)
+		ORDER BY RAND();
+	</select>
+	<!-- 할인 게임 조회 -->
+	<select id="salegame" resultType="com.twistedfae.model.gameVO">
+		select g.game_id, g.title, g.category, g.original_price, g.discount_rate, g.discounted_price, g.thumbnail1 , 
+		g.thumbnail2 ,g.thumbnail3 ,g.thumbnail4 ,g.thumbnail5 ,ifnull(g.buycount, 0) as buycount, IFNULL(c.total_likes, 0) AS total_likes,
+    	IFNULL(c.likes_1, 0) AS likes_1, IFNULL(c.likes_0, 0) AS likes_0
+		FROM game_details g
+		LEFT outer JOIN(
+        SELECT game_id, COUNT(*) AS total_likes,
+            SUM(CASE WHEN likes = 1 THEN 1 ELSE 0 END) AS likes_1,
+            SUM(CASE WHEN likes = 0 THEN 1 ELSE 0 END) AS likes_0
+        FROM comments
+        GROUP BY game_id
+    	) c ON g.game_id = c.game_id
+    	where discount_rate != 0
+   		order by g.buycount desc;	
+	</select>
+	<!-- 랜덤 할인 게임 조회 -->
+	<select id="randsalegame" resultType="com.twistedfae.model.gameVO">
+		select g.game_id, g.title, g.category, g.original_price, g.discount_rate, g.discounted_price, g.thumbnail1 , 
+		g.thumbnail2 ,g.thumbnail3 ,g.thumbnail4 ,g.thumbnail5 ,ifnull(g.buycount, 0) as buycount, IFNULL(c.total_likes, 0) AS total_likes,
+    	IFNULL(c.likes_1, 0) AS likes_1, IFNULL(c.likes_0, 0) AS likes_0
+		FROM game_details g
+		LEFT outer JOIN(
+        SELECT game_id, COUNT(*) AS total_likes,
+            SUM(CASE WHEN likes = 1 THEN 1 ELSE 0 END) AS likes_1,
+            SUM(CASE WHEN likes = 0 THEN 1 ELSE 0 END) AS likes_0
+        FROM comments
+        GROUP BY game_id
+    	) c ON g.game_id = c.game_id
+    	where discount_rate != 0
+		ORDER BY RAND()	
+		LIMIT 2;	
+	</select>
+	<!-- 내 찜 목록 조회-->
+	<select id="mywish" resultType="com.twistedfae.model.WishVO">
+	    SELECT g.title, g.thumbnail1, IFNULL(c.likes_1, 0) AS likes_1, IFNULL(c.likes_0, 0) AS likes_0,
+    	IFNULL(c.total_likes, 0) AS total_likes, g.game_id,
+    	g.discount_rate, g.original_price, g.discounted_price, g.release_date, g.category, w.date_added
+		FROM wish_lists w
+		JOIN game_details g ON w.game_id = g.game_id
+		LEFT OUTER JOIN(
+        SELECT game_id,SUM(CASE WHEN likes = 1 THEN 1 ELSE 0 END) AS likes_1,
+            SUM(CASE WHEN likes = 0 THEN 1 ELSE 0 END) AS likes_0, COUNT(*) AS total_likes
+        FROM comments
+        GROUP BY game_id
+    	) c ON g.game_id = c.game_id
+		WHERE w.user_id = #{user_id};
+	</select>
+	<!-- 내 장바구니 목록 조회-->
+	<select id="mycart" resultType="com.twistedfae.model.CartVO">
+		SELECT g.game_id, g.title, g.category, g.thumbnail1,g.discount_rate, g.original_price, g.discounted_price
+		FROM shopping_cart sc
+		JOIN game_details g ON sc.game_id = g.game_id
+		WHERE sc.user_id = #{user_id};
+	</select>
+	<!-- 찜목록에서 삭제-->
+	<delete id="deleteWish">
+		DELETE FROM wish_lists WHERE user_id = #{user_id} and game_id = #{game_id};
+	</delete>
+	<!-- 내 찜 목록 체크-->
+	<select id="mywhisCheck" resultType="com.twistedfae.model.WishVO">
+	    select * from wish_lists where user_id = #{user_id} and game_id = #{game_id};
+	</select>
+	<!-- 내 장바구니 체크-->
+	<select id="mycartCheck" resultType="com.twistedfae.model.CartVO">
+	    select * from shopping_cart where user_id = #{user_id} and game_id = #{game_id};
+	</select>
+	<!-- 장바구니에서 삭제-->
+	<delete id="deleteCart">
+		DELETE FROM shopping_cart WHERE user_id = #{user_id} and game_id = #{game_id};
+	</delete>
+	<!-- 장바구니 전체 삭제-->
+	<delete id="deleteAllCart">
+		DELETE FROM shopping_cart WHERE user_id = #{user_id};
+	</delete>
+	<!-- 라이브러리에 따른 같은 카테고리 조회  -->
+	<select id="myCategory" resultType="com.twistedfae.model.gameVO">
+		SELECT g.game_id, g.title, g.category, g.thumbnail1
+		FROM game_details g
+		INNER JOIN library l ON g.game_id = l.game_id
+		WHERE l.user_id = #{user_id}
+		AND g.category IN (
+		  SELECT category
+		  FROM game_details
+		  WHERE category = #{category}
+		)AND g.game_id NOT IN (SELECT game_id FROM game_details WHERE game_id = #{game_id});
+	</select>
+	<!-- 같은 카테고리 조회  -->
+	<select id="sameCategory" resultType="com.twistedfae.model.gameVO">
+		SELECT g.game_id, g.title, g.category, g.thumbnail1, g.original_price, g.discount_rate, g.discounted_price
+		FROM game_details g
+		WHERE g.category = #{category}
+		AND g.game_id NOT IN (SELECT game_id FROM game_details WHERE game_id = #{game_id})
+		ORDER BY RAND()	
+		LIMIT 3;
+	</select>
+	<!-- 대댓글 삽입  -->
+	<insert id="nestedReplyInsert">
+		insert into comment_ratings(comment_id, game_id, user_id, likes, content, posted_date) values (#{comment_id}, #{game_id}, #{user_id}, #{likes}, #{content}, #{posted_date});
+	</insert>
+	<!-- 대댓글 체크  -->
+	<select id="checkReply" resultType="com.twistedfae.model.commentVO">
+		select * from comment_ratings where comment_id = #{comment_id} and game_id = #{game_id} and user_id = #{user_id};
+	</select>
+	<!-- 대댓글 수정  -->
+	<update id="nestedReplyUpdate">
+		UPDATE comment_ratings set likes = #{likes}, content = #{content}, posted_date = #{posted_date} where comment_id = #{comment_id} and game_id = #{game_id} and user_id = #{user_id};
+	</update>
+	<!-- 구매수 증가  -->
+	<update id="buycountUpdate">
+		update game_details set buycount = buycount + 1 where game_id = #{game_id};
+	</update>
+	<!-- 클릭한 댓글 조회 -->
+	<select id="commentSelect" resultType="com.twistedfae.model.commentVO">
+		SELECT c.*, u.profile_image, COUNT(cr.likes) AS likes_1, u.name
+		FROM comments c
+		JOIN users u ON c.user_id = u.user_id
+		LEFT JOIN comment_ratings cr ON c.comment_id = cr.comment_id
+		WHERE c.comment_id = #{comment_id} AND cr.likes = 1
+		GROUP BY c.comment_id, u.profile_image;
+	</select>
+	<!-- 댓글의 대댓글 조회 -->
+	<select id="nestedReplySelect" resultType="com.twistedfae.model.commentVO">
+		SELECT cr.*, u.profile_image, u.name
+		FROM comment_ratings cr
+		JOIN users u ON cr.user_id = u.user_id
+		WHERE cr.comment_id = #{comment_id};
+	</select>
+  </mapper>

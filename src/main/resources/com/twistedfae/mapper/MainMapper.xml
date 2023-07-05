@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+  <mapper namespace="com.twistedfae.mapper.MainMapper">
+  
+<!-- INSERT -->
+
+  <!-- 회원가입 -->
+	<insert id="register" parameterType="com.twistedfae.model.UserVO">
+  	INSERT INTO users (user_id, password, name, birthday, gender, email, reg_date)
+	  VALUES (#{user_id}, #{password}, #{name}, #{birthday}, #{gender}, #{email}, CURRENT_DATE);
+  </insert>
+  
+  
+<!-- SELECT -->
+
+	<!-- 로그인 -->
+	<select id="login" resultType="com.twistedfae.model.UserVO">
+		SELECT * FROM users WHERE user_id = #{user_id} AND password = #{password};
+	</select>
+	
+	<!-- 주중 할인 섹션 출력 -->
+	<select id="getAllWeeklySales" resultType="com.twistedfae.model.WeeklySaleVO">
+	  SELECT title, original_price, discount_rate, discounted_price
+	  FROM game_details
+	  WHERE buycount >= 100
+	  LIMIT 4;
+	</select>
+	
+	<!-- 로그인 시 헤더에서 닉네임 정보 출력 -->
+	<select id="getNickname" resultType="com.twistedfae.model.UserVO">
+		SELECT nickname
+		FROM users
+		WHERE user_id = #{user_id};
+	</select>
+
+  </mapper>
